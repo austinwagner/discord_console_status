@@ -237,7 +237,9 @@ impl PsnPresenceProvider {
 
         if let Ok(err) = serde_json::from_str::<responses::GenericError>(&resp_body) {
             if let Some(error_code) = err.error_code {
-                return Err(PsnError::Api(error_code, err.error_description.unwrap_or("Unknown error".to_owned())));
+                return Err(PsnError::Api(error_code,
+                                         err.error_description
+                                             .unwrap_or("Unknown error".to_owned())));
             }
         }
 
@@ -380,9 +382,15 @@ impl PsnPresenceProvider {
         let authorization: responses::Authorization = serde_json::from_str(json)?;
 
         match authorization.error_code {
-            Some(e) => Err(PsnError::Api(e, authorization.error_description.unwrap_or("Unknown error".to_owned()))),
-            None => Ok((authorization.access_token.ok_or(PsnError::MissingField("access_token"))?,
-                        authorization.refresh_token.ok_or(PsnError::MissingField("refresh_token"))?))
+            Some(e) => {
+                Err(PsnError::Api(e,
+                                  authorization.error_description
+                                      .unwrap_or("Unknown error".to_owned())))
+            }
+            None => {
+                Ok((authorization.access_token.ok_or(PsnError::MissingField("access_token"))?,
+                    authorization.refresh_token.ok_or(PsnError::MissingField("refresh_token"))?))
+            }
         }
     }
 

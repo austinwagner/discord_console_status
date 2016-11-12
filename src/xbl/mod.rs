@@ -79,7 +79,10 @@ impl XblPresenceProvider {
         let presence: responses::Presence = serde_json::from_str(&json)?;
         match presence.error_code {
             None => Ok(presence),
-            Some(e) => Err(XblError::Api(e, presence.error_message.unwrap_or("Unknown error".to_owned()))),
+            Some(e) => {
+                Err(XblError::Api(e,
+                                  presence.error_message.unwrap_or("Unknown error".to_owned())))
+            }
         }
     }
 

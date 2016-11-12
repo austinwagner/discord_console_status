@@ -64,7 +64,8 @@ impl PresenceMonitorConfig {
 
         let mut title_settings: HashMap<String, TitleSetting> = HashMap::new();
         for pair in config.title_settings.iter().flat_map(|ref x| x.iter()) {
-            title_settings.insert(pair.0.clone(), PresenceMonitorConfig::convert_title_setting(pair.1));
+            title_settings.insert(pair.0.clone(),
+                                  PresenceMonitorConfig::convert_title_setting(pair.1));
         }
 
         Ok(PresenceMonitorConfig {
@@ -72,7 +73,7 @@ impl PresenceMonitorConfig {
             discord_password: config.discord_password.clone(),
             update_interval: Duration::from_secs(config.update_interval.unwrap_or(30u64)),
             title_settings: title_settings,
-            json: json
+            json: json,
         })
     }
 

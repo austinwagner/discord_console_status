@@ -109,8 +109,7 @@ impl PresenceMonitor {
             let dummy_lock = dummy_mutex.lock().unwrap();
             let _ = (*canceller).wait_timeout(dummy_lock, update_interval).unwrap();
             if sigint::cancelled() {
-                debug!("update_loop - {} - exit",
-                       provider.provider_type().name);
+                debug!("update_loop - {} - exit", provider.provider_type().name);
                 return;
             }
         }
@@ -247,7 +246,7 @@ impl DummyProvider {
     pub fn from_config(config: &HJsonObject) -> Option<DummyProvider> {
         match config.get("dummy") {
             Some(_) => Some(DummyProvider),
-            None => None
+            None => None,
         }
     }
 }
@@ -294,13 +293,12 @@ fn main() {
                     connecting to Playstation Network"))
         .get_matches();
 
-    let result =
-        if let Some(_) = matches.subcommand_matches("get-psn-token") {
-            get_psn_token()
-        } else {
-            let config = matches.value_of("config").unwrap_or("config.hjson");
-            try_main(&config)
-        };
+    let result = if let Some(_) = matches.subcommand_matches("get-psn-token") {
+        get_psn_token()
+    } else {
+        let config = matches.value_of("config").unwrap_or("config.hjson");
+        try_main(&config)
+    };
 
     if let Err(e) = result {
         error!("{}", e);
