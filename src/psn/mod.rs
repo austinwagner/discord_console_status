@@ -1,4 +1,3 @@
-extern crate serde_json;
 extern crate regex;
 extern crate select;
 
@@ -12,10 +11,14 @@ use hyper::mime::{Mime, TopLevel, SubLevel};
 use std::io::Read;
 use std::iter::Iterator;
 use std::any::TypeId;
+use serde_hjson::Value as HJsonValue;
+
+use HJsonObject;
 use PresenceProvider;
 use Presence;
 use PresenceDetail;
 use PresenceProviderType;
+use serde_json;
 
 use std::io;
 use std::error;
@@ -148,6 +151,14 @@ impl PsnPresenceProvider {
             refresh_token: refresh_token.to_owned(),
             access_token: "".to_owned(),
         }
+    }
+
+    pub fn from_config(config: &HJsonObject) -> Option<PsnPresenceProvider> {
+        let psn_obj = json!(opt!(config.get("psn")), HJsonValue::Object);
+        let id = json!(opt!(psn_obj.get("id")), HJsonValue::String);
+        let refresh_token = json!(opt!(psn_obj.get("refresh_token")), HJsonValue::String);
+
+        Some(PsnPresenceProvider::new(&id, &refresh_token))
     }
 
     pub fn refresh(&mut self) -> Result<(), PsnError> {

@@ -10,6 +10,7 @@ serde_codegen = "0.8"
 [dependencies]
 serde = "0.8"
 serde_json = "0.8"
+serde-hjson = "0.8"
 discord = "0.7"
 hyper = "0.9"
 quick-error = "1.1"

@@ -12,9 +12,24 @@ extern crate log;
 
 extern crate clap;
 extern crate serde_json;
+extern crate serde_hjson;
 extern crate env_logger;
 extern crate discord;
 extern crate rpassword;
+
+macro_rules! opt {
+    ($e:expr) => (match $e {
+        Some(val) => val,
+        None => return None,
+    });
+}
+
+macro_rules! json {
+    ($e:expr, $t:path) => (match *$e {
+        $t(ref val) => val,
+        _ => return None,
+    });
+}
 
 mod xbl;
 mod psn;
@@ -32,6 +47,8 @@ use discord::model::Game;
 use clap::{Arg, App, SubCommand};
 use config::{PresenceMonitorConfig, TitleSetting};
 use std::any::TypeId;
+use serde_hjson::Value as HJsonValue;
+use serde_hjson::Map as HJsonMap;
 
 #[derive(Debug)]
 struct PresenceDetail {
@@ -41,6 +58,7 @@ struct PresenceDetail {
 }
 
 type Presence = Option<PresenceDetail>;
+type HJsonObject = HJsonMap<String, HJsonValue>;
 
 struct PresenceProviderType {
     id: TypeId,
@@ -179,26 +197,29 @@ impl PresenceMonitor {
 
     fn make_providers(&self) -> Vec<Box<PresenceProvider>> {
         let mut providers: Vec<Box<PresenceProvider>> = Vec::new();
-        if self.config.xbl_id != "" {
-            providers.push(Box::new(xbl::XblPresenceProvider::new(&self.config.xbl_id,
-                                                                  &self.config.xbl_api_key)));
+        if let Some(s) = xbl::XblPresenceProvider::from_config(&self.config.json) {
+            providers.push(Box::new(s));
         }
 
-        if self.config.psn_id != "" {
-            providers.push(Box::new(psn::PsnPresenceProvider::new(&self.config.psn_id,
-                                                                  &self.config.psn_refresh_token)));
+        if let Some(s) = psn::PsnPresenceProvider::from_config(&self.config.json) {
+            providers.push(Box::new(s));
+        }
+
+        if let Some(s) = DummyProvider::from_config(&self.config.json) {
+            providers.push(Box::new(s));
         }
 
         providers
     }
 
-    fn run(&mut self, providers: Vec<Box<PresenceProvider>>) {
+    fn run(&mut self) {
         let (connection, ready_event) = self.discord.connect().unwrap();
         info!("Discord logged in as {}", ready_event.user.username);
         let canceller = Arc::new(Condvar::new());
 
         sigint::set_ctrlc_handler(&*canceller);
 
+        let providers = self.make_providers();
         let receiver = self.spawn_threads(canceller.clone(), providers);
 
         self.run_loop(receiver, &connection);
@@ -222,11 +243,19 @@ impl PresenceProvider for DummyProvider {
     }
 }
 
+impl DummyProvider {
+    pub fn from_config(config: &HJsonObject) -> Option<DummyProvider> {
+        match config.get("dummy") {
+            Some(_) => Some(DummyProvider),
+            None => None
+        }
+    }
+}
+
 fn try_main(config_path: &str) -> Result<(), Box<error::Error>> {
     let config = PresenceMonitorConfig::from_file(config_path)?;
     let mut monitor = PresenceMonitor::new(config);
-
-    monitor.run(monitor.make_providers());
+    monitor.run();
     Ok(())
 }
 
@@ -268,7 +297,7 @@ fn main() {
         if let Some(_) = matches.subcommand_matches("get-psn-token") {
             get_psn_token()
         } else {
-            let config = matches.value_of("config").unwrap_or("config.json");
+            let config = matches.value_of("config").unwrap_or("config.hjson");
             try_main(&config)
         };
 

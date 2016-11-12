@@ -1,5 +1,3 @@
-extern crate serde_json;
-
 mod file;
 
 use std::io;
@@ -7,6 +5,10 @@ use std::fs::File;
 use std::time::Duration;
 use std::collections::HashMap;
 use self::file::ConfigFile;
+use serde_hjson::Value as HJsonValue;
+
+use HJsonObject;
+use serde_hjson;
 
 quick_error! {
     #[derive(Debug)]
@@ -17,11 +19,15 @@ quick_error! {
             display("I/O error: {}", err)
             cause(err)
         }
-        Json(err: serde_json::Error) {
+        Json(err: serde_hjson::Error) {
             from()
-            description("json parse error")
-            display("JSON parsing error: {}", err)
+            description("hjson parse error")
+            display("HJSON parsing error: {}", err)
             cause(err)
+        }
+        Invalid {
+            description("invalid config")
+            display("Invalid config")
         }
     }
 }
@@ -36,48 +42,38 @@ pub enum TitleSetting {
 pub struct PresenceMonitorConfig {
     pub discord_username: String,
     pub discord_password: String,
-    pub xbl_id: String,
-    pub xbl_api_key: String,
-    pub psn_id: String,
-    pub psn_refresh_token: String,
     pub update_interval: Duration,
     pub title_settings: HashMap<String, TitleSetting>,
+    pub json: HJsonObject,
 }
 
 impl PresenceMonitorConfig {
     pub fn from_file(path: &str) -> Result<PresenceMonitorConfig, ConfigError> {
-        let file = File::open(path)?;
-        let config_file: ConfigFile = serde_json::from_reader(file)?;
-
-        let mut config = PresenceMonitorConfig {
-            discord_username: config_file.discord_username.clone(),
-            discord_password: config_file.discord_password.clone(),
-            xbl_id: "".to_owned(),
-            xbl_api_key: "".to_owned(),
-            psn_id: "".to_owned(),
-            psn_refresh_token: "".to_owned(),
-            update_interval: Duration::from_secs(config_file.update_interval.unwrap_or(30u64)),
-            title_settings: HashMap::new(),
+        let json = {
+            let file = File::open(path)?;
+            match serde_hjson::from_reader(file)? {
+                HJsonValue::Object(o) => o,
+                _ => return Err(ConfigError::Invalid),
+            }
         };
 
-        if let Some(ref xbl) = config_file.xbl {
-            config.xbl_id = xbl.id.clone();
-            config.xbl_api_key = xbl.api_key.clone();
+        let config: ConfigFile = {
+            let file = File::open(path)?;
+            serde_hjson::from_reader(file)?
+        };
+
+        let mut title_settings: HashMap<String, TitleSetting> = HashMap::new();
+        for pair in config.title_settings.iter().flat_map(|ref x| x.iter()) {
+            title_settings.insert(pair.0.clone(), PresenceMonitorConfig::convert_title_setting(pair.1));
         }
 
-        if let Some(ref psn) = config_file.psn {
-            config.psn_id = psn.id.clone();
-            config.psn_refresh_token = psn.refresh_token.clone();
-        }
-
-        {
-            let ref mut title_settings = config.title_settings;
-            for pair in config_file.title_settings.iter().flat_map(|ref x| x.iter()) {
-                title_settings.insert(pair.0.clone(), PresenceMonitorConfig::convert_title_setting(pair.1));
-            }
-        }
-
-        Ok(config)
+        Ok(PresenceMonitorConfig {
+            discord_username: config.discord_username.clone(),
+            discord_password: config.discord_password.clone(),
+            update_interval: Duration::from_secs(config.update_interval.unwrap_or(30u64)),
+            title_settings: title_settings,
+            json: json
+        })
     }
 
     fn convert_title_setting(string: &str) -> TitleSetting {

@@ -1,5 +1,3 @@
-extern crate serde_json;
-
 mod responses;
 
 use hyper::client::Client as HttpClient;
@@ -7,10 +5,14 @@ use hyper::header::Headers;
 use std::io::Read;
 use std::iter::Iterator;
 use std::any::TypeId;
+use serde_hjson::Value as HJsonValue;
+
+use HJsonObject;
 use PresenceProvider;
 use Presence;
 use PresenceDetail;
 use PresenceProviderType;
+use serde_json;
 
 use std::io;
 use std::error;
@@ -86,6 +88,14 @@ impl XblPresenceProvider {
             xbl_id: xbl_id.to_owned(),
             api_key: api_key.to_owned(),
         }
+    }
+
+    pub fn from_config(config: &HJsonObject) -> Option<XblPresenceProvider> {
+        let xbl_obj = json!(opt!(config.get("xbl")), HJsonValue::Object);
+        let id = json!(opt!(xbl_obj.get("id")), HJsonValue::String);
+        let api_key = json!(opt!(xbl_obj.get("api_key")), HJsonValue::String);
+
+        Some(XblPresenceProvider::new(&id, &api_key))
     }
 }
 
