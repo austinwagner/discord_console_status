@@ -37,6 +37,8 @@ const CLIENT_SECRET1: &'static str = "xSk2YI8qJqZfeLQv";
 const CLIENT_SECRET2: &'static str = "Zo4y8eGIa3oazIEp";
 const DUID: &'static str = "00000007000801a800000000000000ace468c6910815113a20202020476f6f676c653a2020202020506978656c00000000000000000000000000000000";
 const REQUESTED_WITH: &'static str = "com.scee.psxandroid";
+const USER_AGENT2: &'static str = "com.sony.snei.np.android.sso.share.oauth.versa.USER_AGENT";
+const AUTHORIZATION: &'static str = "Basic YjBkMGQ3YWQtYmI5OS00YWIxLWIyNWUtYWZhMGM3NjU3N2IwOlpvNHk4ZUdJYTNvYXpJRXA=";
 
 const SCOPES1: &'static str =
     "openid user:account.core.get user:account.languages.get kamaji:get_account_hash \
@@ -48,7 +50,7 @@ const SCOPES2: &'static str = "psn:sceapp,user:account.get,user:account.settings
                                distributor,oauth:manage_device_usercodes,kamaji:game_list,kamaji:\
                                get_internal_entitlements,capone:report_submission";
 lazy_static! {
-    static ref USER_AGENT: String = format!(
+    static ref USER_AGENT1: String = format!(
         "Mozilla/5.0 (Linux; U; Android 4.3; {0}; C6502 Build/10.4.1.B.0.101) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30 PlayStation App/2.55.8/{0}/{0}",
         "en");
 }
@@ -126,7 +128,7 @@ fn make_url_query(data: &[(&str, &str)]) -> String {
 impl PsnPresenceProvider {
     fn default_headers() -> Headers {
         let mut headers = Headers::new();
-        headers.set(UserAgent(USER_AGENT.to_owned()));
+        headers.set(UserAgent(USER_AGENT1.to_owned()));
         headers.set(Origin {
             scheme: "https".to_owned(),
             host: Host {
@@ -173,7 +175,7 @@ impl PsnPresenceProvider {
     fn get_profile(&mut self) -> Result<responses::Profile, PsnError> {
         info!("Requesting presence data from PSN");
         let mut headers = Headers::new();
-        headers.set(UserAgent(USER_AGENT.to_owned()));
+        headers.set(UserAgent(USER_AGENT1.to_owned()));
         headers.set(Origin {
             scheme: "http".to_owned(),
             host: Host {
@@ -328,8 +330,8 @@ impl PsnPresenceProvider {
                                     ("duid", DUID)]);
 
         let mut headers = Headers::new();
-        headers.set(UserAgent("com.sony.snei.np.android.sso.share.oauth.versa.USER_AGENT".to_owned()));
-        headers.set(Authorization("Basic YjBkMGQ3YWQtYmI5OS00YWIxLWIyNWUtYWZhMGM3NjU3N2IwOlpvNHk4ZUdJYTNvYXpJRXA=".to_owned()));
+        headers.set(UserAgent(USER_AGENT2.to_owned()));
+        headers.set(Authorization(AUTHORIZATION.to_owned()));
         headers.set(Cookie(cookies.clone()));
         headers.set(ContentType(Mime(TopLevel::Application, SubLevel::WwwFormUrlEncoded, vec![])));
         headers.set(ContentLength(data.len() as u64));
@@ -361,8 +363,8 @@ impl PsnPresenceProvider {
                                     ("duid", DUID)]);
 
         let mut headers = Headers::new();
-        headers.set(UserAgent("com.sony.snei.np.android.sso.share.oauth.versa.USER_AGENT".to_owned()));
-        headers.set(Authorization("Basic YjBkMGQ3YWQtYmI5OS00YWIxLWIyNWUtYWZhMGM3NjU3N2IwOlpvNHk4ZUdJYTNvYXpJRXA=".to_owned()));
+        headers.set(UserAgent(USER_AGENT2.to_owned()));
+        headers.set(Authorization(AUTHORIZATION.to_owned()));
         headers.set(ContentType(Mime(TopLevel::Application, SubLevel::WwwFormUrlEncoded, vec![])));
         headers.set(ContentLength(data.len() as u64));
 
