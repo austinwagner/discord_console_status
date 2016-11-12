@@ -25,7 +25,7 @@ use std::io::{self, Write};
 use std::error;
 use std::thread;
 use std::sync::mpsc::{Receiver, Sender, channel};
-use std::sync::{Arc, Condvar, Mutex, Barrier};
+use std::sync::{Arc, Condvar, Mutex};
 use std::collections::HashMap;
 use std::time::Duration;
 use discord::model::Game;
@@ -196,24 +196,8 @@ impl PresenceMonitor {
         let (connection, ready_event) = self.discord.connect().unwrap();
         info!("Discord logged in as {}", ready_event.user.username);
         let canceller = Arc::new(Condvar::new());
-        let ctrlc_condvar = Arc::new(Condvar::new());
-        let ctrlc_barrier = Arc::new(Barrier::new(2));
 
-        let canceller_clone = canceller.clone();
-        let ctrlc_condvar_clone = ctrlc_condvar.clone();
-        thread::spawn(move || {
-            let dummy_mutex = Mutex::new(0u8);
-            while !sigint::cancelled() {
-                let dummy_lock = dummy_mutex.lock().unwrap();
-                debug!("waiting for ctrlc_condvar");
-                let _ = (*ctrlc_condvar_clone).wait(dummy_lock);
-                debug!("ctrlc_condvar tripped");
-            }
-            info!("Performing graceful shutdown");
-            (*canceller_clone).notify_all();
-        });
-
-        sigint::set_ctrlc_handler(&*ctrlc_condvar, &*ctrlc_barrier);
+        sigint::set_ctrlc_handler(&*canceller);
 
         let receiver = self.spawn_threads(canceller.clone(), providers);
 
@@ -221,9 +205,6 @@ impl PresenceMonitor {
 
         info!("Cleaning up and resetting status");
         connection.set_game(None);
-        debug!("Synchronizing Ctrl-C barrier on main thread");
-        (*ctrlc_barrier).wait();
-        debug!("Passed Ctrl-C barrier on main thread");
     }
 }
 

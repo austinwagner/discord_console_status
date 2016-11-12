@@ -1,8 +1,7 @@
-use std::sync::{Barrier, Condvar};
+use std::sync::Condvar;
 use std::sync::atomic::{AtomicBool, Ordering, ATOMIC_BOOL_INIT};
 
 static mut CONDVAR: *const Condvar = 0 as *const Condvar;
-static mut BARRIER: *const Barrier = 0 as *const Barrier;
 static mut IS_CANCELLED: AtomicBool = ATOMIC_BOOL_INIT;
 
 #[cfg(windows)]
@@ -48,14 +47,12 @@ fn ctrlc_handler() {
     unsafe {
         IS_CANCELLED.store(true, Ordering::Relaxed);
         (*CONDVAR).notify_all();
-        (*BARRIER).wait();
     }
 }
 
-pub fn set_ctrlc_handler(condvar: &Condvar, barrier: &Barrier) {
+pub fn set_ctrlc_handler(condvar: &Condvar) {
     unsafe {
         CONDVAR = condvar as *const Condvar;
-        BARRIER = barrier as *const Barrier;
     }
     detail::enable_ctrlc_handler();
 }
