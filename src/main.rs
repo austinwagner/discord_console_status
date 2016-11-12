@@ -267,6 +267,7 @@ fn get_psn_token() -> Result<(), Box<error::Error>> {
     let stdin = io::stdin();
     let mut username = String::new();
     stdin.read_line(&mut username).unwrap();
+    username.pop();
 
     let password = rpassword::prompt_password_stdout("Password: ").unwrap();
 
