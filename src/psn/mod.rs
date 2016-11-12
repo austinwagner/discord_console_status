@@ -229,7 +229,18 @@ impl PsnPresenceProvider {
             .headers(headers)
             .body(&data);
 
-        let resp = req.send()?;
+        let mut resp = req.send()?;
+
+        let mut resp_body = String::new();
+        resp.read_to_string(&mut resp_body)?;
+        debug!("{}", resp_body);
+
+        if let Ok(err) = serde_json::from_str::<responses::GenericError>(&resp_body) {
+            if let Some(error_code) = err.error_code {
+                return Err(PsnError::Api(error_code, err.error_description.unwrap_or("Unknown error".to_owned())));
+            }
+        }
+
         match resp.headers.get::<SetCookie>() {
             Some(s) => Ok(s.0.clone()),
             None => Err(PsnError::InvalidResponse("Missing response cookie.")),

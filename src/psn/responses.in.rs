@@ -34,3 +34,9 @@ pub struct Presence {
     #[serde(rename = "titleName")]
     pub title_name: Option<String>,
 }
+
+#[derive(Deserialize, Debug)]
+pub struct GenericError {
+    pub error_code: Option<i32>,
+    pub error_description: Option<String>,
+}
