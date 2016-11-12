@@ -1,0 +1,25 @@
+[package]
+name = "discord_console_status"
+version = "0.1.0"
+authors = ["Austin Wagner <austinwagner@gmail.com>"]
+build = "build.rs"
+
+[build-dependencies]
+serde_codegen = "0.8"
+
+[dependencies]
+serde = "0.8"
+serde_json = "0.8"
+discord = "0.7"
+hyper = "0.9"
+quick-error = "1.1"
+regex = "0.1"
+lazy_static = "0.2"
+select = "0.3"
+winapi = "0.2"
+kernel32-sys = "0.2"
+log = "0.3"
+env_logger = "0.3"
+clap = "2.18"
+rpassword = "0.3"
+nix = "0.7"
