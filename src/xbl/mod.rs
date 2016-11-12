@@ -6,6 +6,7 @@ use hyper::client::Client as HttpClient;
 use hyper::header::Headers;
 use std::io::Read;
 use std::iter::Iterator;
+use std::any::TypeId;
 use PresenceProvider;
 use Presence;
 use PresenceDetail;
@@ -90,7 +91,10 @@ impl XblPresenceProvider {
 
 impl PresenceProvider for XblPresenceProvider {
     fn provider_type(&self) -> PresenceProviderType {
-        PresenceProviderType::Xbl
+        PresenceProviderType {
+            id: TypeId::of::<Self>(),
+            name: "xbl",
+        }
     }
 
     fn get_presence(&mut self) -> Result<Presence, Box<error::Error>> {

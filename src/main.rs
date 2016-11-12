@@ -31,6 +31,7 @@ use std::time::Duration;
 use discord::model::Game;
 use clap::{Arg, App, SubCommand};
 use config::{PresenceMonitorConfig, TitleSetting};
+use std::any::TypeId;
 
 #[derive(Debug)]
 struct PresenceDetail {
@@ -41,6 +42,11 @@ struct PresenceDetail {
 
 type Presence = Option<PresenceDetail>;
 
+struct PresenceProviderType {
+    id: TypeId,
+    name: &'static str,
+}
+
 trait PresenceProvider: std::marker::Send {
     fn get_presence(&mut self) -> Result<Presence, Box<error::Error>>;
     fn provider_type(&self) -> PresenceProviderType;
@@ -50,13 +56,7 @@ struct PresenceMonitor {
     config: PresenceMonitorConfig,
     last_status: Option<String>,
     discord: discord::Discord,
-    last_statuses: HashMap<PresenceProviderType, Option<String>>,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
-enum PresenceProviderType {
-    Xbl,
-    Psn,
+    last_statuses: HashMap<TypeId, Option<String>>,
 }
 
 impl PresenceMonitor {
@@ -74,14 +74,14 @@ impl PresenceMonitor {
                    mut provider: Box<PresenceProvider>,
                    sender: Sender<(PresenceProviderType, Presence)>,
                    canceller: Arc<Condvar>) {
-        debug!("update_loop - {:?} - start", provider.provider_type());
+        debug!("update_loop - {} - start", provider.provider_type().name);
 
         let dummy_mutex = Mutex::new(0u8);
 
         loop {
             match provider.get_presence() {
                 Err(e) => {
-                    error!("update_loop - {:?} - {}", provider.provider_type(), e);
+                    error!("update_loop - {} - {}", provider.provider_type().name, e);
                 }
                 Ok(presence) => {
                     let _ = sender.send((provider.provider_type(), presence));
@@ -91,8 +91,8 @@ impl PresenceMonitor {
             let dummy_lock = dummy_mutex.lock().unwrap();
             let _ = (*canceller).wait_timeout(dummy_lock, update_interval).unwrap();
             if sigint::cancelled() {
-                info!("update_loop - {:?} - exit",
-                      provider.provider_type());
+                debug!("update_loop - {} - exit",
+                       provider.provider_type().name);
                 return;
             }
         }
@@ -104,7 +104,7 @@ impl PresenceMonitor {
                      -> Receiver<(PresenceProviderType, Presence)> {
         let (sender, receiver) = channel::<(PresenceProviderType, Presence)>();
         for provider in providers.drain(0..) {
-            self.last_statuses.insert(provider.provider_type(), None);
+            self.last_statuses.insert(provider.provider_type().id, None);
             let update_interval = self.config.update_interval;
             let sender_clone = sender.clone();
             let canceller_clone = canceller.clone();
@@ -152,7 +152,7 @@ impl PresenceMonitor {
                 receiver: Receiver<(PresenceProviderType, Presence)>,
                 connection: &discord::Connection) {
         for (provider_type, presence) in receiver.iter() {
-            let last_status = (*(self.last_statuses.get(&provider_type).unwrap())).clone();
+            let last_status = (*(self.last_statuses.get(&provider_type.id).unwrap())).clone();
 
             let new_status = self.make_status_string(&presence);
             if last_status != new_status || self.last_status == None {
@@ -172,7 +172,7 @@ impl PresenceMonitor {
                 info!("Status unchanged");
             }
 
-            self.last_statuses.insert(provider_type, new_status.clone());
+            self.last_statuses.insert(provider_type.id, new_status.clone());
             self.last_status = new_status;
         }
     }
@@ -215,7 +215,10 @@ impl PresenceProvider for DummyProvider {
     }
 
     fn provider_type(&self) -> PresenceProviderType {
-        PresenceProviderType::Xbl
+        PresenceProviderType {
+            id: TypeId::of::<Self>(),
+            name: "dummy",
+        }
     }
 }
 
@@ -223,11 +226,7 @@ fn try_main(config_path: &str) -> Result<(), Box<error::Error>> {
     let config = PresenceMonitorConfig::from_file(config_path)?;
     let mut monitor = PresenceMonitor::new(config);
 
-    let mut providers: Vec<Box<PresenceProvider>> = Vec::new();
-    providers.push(Box::new(DummyProvider{}));
-    monitor.run(providers);
-
-    //monitor.run(monitor.make_providers());
+    monitor.run(monitor.make_providers());
     Ok(())
 }
 

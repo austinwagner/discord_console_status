@@ -11,6 +11,7 @@ use hyper::header::{Headers, UserAgent, Origin, ContentType, ContentLength, Auth
 use hyper::mime::{Mime, TopLevel, SubLevel};
 use std::io::Read;
 use std::iter::Iterator;
+use std::any::TypeId;
 use PresenceProvider;
 use Presence;
 use PresenceDetail;
@@ -380,7 +381,10 @@ impl PsnPresenceProvider {
 
 impl PresenceProvider for PsnPresenceProvider {
     fn provider_type(&self) -> PresenceProviderType {
-        PresenceProviderType::Psn
+        PresenceProviderType {
+            id: TypeId::of::<Self>(),
+            name: "psn",
+        }
     }
 
     fn get_presence(&mut self) -> Result<Presence, Box<error::Error>> {
