@@ -187,18 +187,18 @@ impl PresenceMonitor {
             if last_status != new_status || (self.last_status == None && new_status.is_some()) {
                 let game = match new_status {
                     None => {
-                        info!("Clearing status");
+                        info!("{} - clearing status", provider_type.name);
                         None
                     }
                     Some(ref s) => {
-                        info!("Updating status to '{}'", s);
+                        info!("{} - updating status to '{}'", provider_type.name, s);
                         Some(Game::playing(s.clone()))
                     }
                 };
 
                 connection.set_game(game);
             } else {
-                info!("Status unchanged");
+                info!("{} - status unchanged", provider_type.name);
             }
 
             self.last_statuses.insert(provider_type.id, new_status.clone());
