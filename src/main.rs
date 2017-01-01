@@ -91,10 +91,9 @@ impl PresenceMonitor {
     fn update_loop(update_interval: Duration,
                    mut provider: Box<PresenceProvider>,
                    sender: Sender<(PresenceProviderType, Presence)>,
-                   canceller: Arc<Condvar>) {
+                   canceller: Arc<Condvar>,
+                   mutex: Arc<Mutex<u8>>) {
         debug!("update_loop - {} - start", provider.provider_type().name);
-
-        let dummy_mutex = Mutex::new(0u8);
 
         loop {
             match provider.get_presence() {
@@ -106,8 +105,17 @@ impl PresenceMonitor {
                 }
             }
 
-            let dummy_lock = dummy_mutex.lock().unwrap();
+            debug!("update_loop - {} - awaiting lock", provider.provider_type().name);
+            let dummy_lock = (*mutex).lock().unwrap();
+            debug!("update_loop - {} - lock acquired", provider.provider_type().name);
+            if sigint::cancelled() {
+                debug!("update_loop - {} - exit", provider.provider_type().name);
+                return;
+            }
+
+            debug!("update_loop - {} - awaiting condvar", provider.provider_type().name);
             let _ = (*canceller).wait_timeout(dummy_lock, update_interval).unwrap();
+            debug!("update_loop - {} - condvar tripped or timed out", provider.provider_type().name);
             if sigint::cancelled() {
                 debug!("update_loop - {} - exit", provider.provider_type().name);
                 return;
@@ -120,16 +128,20 @@ impl PresenceMonitor {
                      mut providers: Vec<Box<PresenceProvider>>)
                      -> Receiver<(PresenceProviderType, Presence)> {
         let (sender, receiver) = channel::<(PresenceProviderType, Presence)>();
+        let mutex = Arc::new(Mutex::new(0u8));
+
         for provider in providers.drain(0..) {
             self.last_statuses.insert(provider.provider_type().id, None);
             let update_interval = self.config.update_interval;
             let sender_clone = sender.clone();
             let canceller_clone = canceller.clone();
+            let mutex_clone = mutex.clone();
             thread::spawn(move || {
                 PresenceMonitor::update_loop(update_interval,
                                              provider,
                                              sender_clone,
-                                             canceller_clone);
+                                             canceller_clone,
+                                             mutex_clone);
             });
         }
 
@@ -172,7 +184,7 @@ impl PresenceMonitor {
             let last_status = (*(self.last_statuses.get(&provider_type.id).unwrap())).clone();
 
             let new_status = self.make_status_string(&presence);
-            if last_status != new_status || self.last_status == None {
+            if last_status != new_status || (self.last_status == None && new_status.is_some()) {
                 let game = match new_status {
                     None => {
                         info!("Clearing status");
