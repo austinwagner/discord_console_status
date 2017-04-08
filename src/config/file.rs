@@ -1,3 +1,8 @@
-extern crate serde;
+use std::collections::HashMap;
 
-include!(concat!(env!("OUT_DIR"), "/config.file.rs"));
+#[derive(Deserialize, Debug)]
+pub struct ConfigFile {
+    pub discord_token: String,
+    pub title_settings: Option<HashMap<String, String>>,
+    pub update_interval: Option<u64>,
+}

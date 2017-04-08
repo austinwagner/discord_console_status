@@ -10,6 +10,9 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 
+#[macro_use]
+extern crate serde_derive;
+
 extern crate clap;
 extern crate serde_json;
 extern crate serde_hjson;
@@ -80,8 +83,7 @@ struct PresenceMonitor {
 impl PresenceMonitor {
     fn new(config: PresenceMonitorConfig) -> PresenceMonitor {
         PresenceMonitor {
-            discord: discord::Discord::new(&config.discord_username, &config.discord_password)
-                .unwrap(),
+            discord: discord::Discord::from_user_token(&config.discord_token).unwrap(),
             config: config,
             last_status: None,
             last_statuses: HashMap::new(),
@@ -158,7 +160,7 @@ impl PresenceMonitor {
                 };
 
                 if title_setting == TitleSetting::Ignore {
-                    info!("Skipping '{}' dues to 'ignore'", detail.game);
+                    info!("Skipping '{}' due to 'ignore'", detail.game);
                     return None;
                 }
 

@@ -40,8 +40,7 @@ pub enum TitleSetting {
 }
 
 pub struct PresenceMonitorConfig {
-    pub discord_username: String,
-    pub discord_password: String,
+    pub discord_token: String,
     pub update_interval: Duration,
     pub title_settings: HashMap<String, TitleSetting>,
     pub json: HJsonObject,
@@ -69,8 +68,7 @@ impl PresenceMonitorConfig {
         }
 
         Ok(PresenceMonitorConfig {
-            discord_username: config.discord_username.clone(),
-            discord_password: config.discord_password.clone(),
+            discord_token: config.discord_token.clone(),
             update_interval: Duration::from_secs(config.update_interval.unwrap_or(30u64)),
             title_settings: title_settings,
             json: json,
