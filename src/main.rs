@@ -16,7 +16,7 @@ extern crate serde_derive;
 extern crate clap;
 extern crate serde_json;
 extern crate serde_hjson;
-extern crate env_logger;
+extern crate log4rs;
 extern crate discord;
 extern crate rpassword;
 
@@ -168,7 +168,7 @@ impl PresenceMonitor {
                 if let Some(ref extended_info) = detail.extended_info {
                     if title_setting == TitleSetting::NameOnly {
                         info!("Skipping extended info for '{}' due to 'name-only'",
-                              detail.game);
+                        detail.game);
                     } else {
                         new_status = format!("{} {}", new_status, extended_info);
                     }
@@ -199,8 +199,10 @@ impl PresenceMonitor {
                 };
 
                 connection.set_game(game);
+            } else if let Some(ref title) = new_status {
+                info!("{} - status unchanged ('{}')", provider_type.name, title);
             } else {
-                info!("{} - status unchanged", provider_type.name);
+                info!("{} - status unchanged (None)", provider_type.name);
             }
 
             self.last_statuses.insert(provider_type.id, new_status.clone());
@@ -243,6 +245,7 @@ impl PresenceMonitor {
 }
 
 struct DummyProvider;
+
 impl PresenceProvider for DummyProvider {
     fn get_presence(&mut self) -> Result<Presence, Box<error::Error>> {
         Ok(None)
@@ -290,8 +293,6 @@ fn get_psn_token() -> Result<(), Box<error::Error>> {
 }
 
 fn main() {
-    env_logger::init().unwrap();
-
     let matches = App::new("discord_console_status")
         .version("1.0")
         .author("Austin Wagner <austinwagner@gmail.com>")
@@ -301,16 +302,26 @@ fn main() {
             .long("config")
             .value_name("FILE")
             .help("Overrides the default config file path")
+            .default_value("config.hjson")
+            .takes_value(true))
+        .arg(Arg::with_name("log-config")
+            .short("l")
+            .long("log-config")
+            .value_name("FILE")
+            .help("Overrides the default log4rs file path")
+            .default_value("log4rs.yaml")
             .takes_value(true))
         .subcommand(SubCommand::with_name("get-psn-token")
             .about("Retrieves a refresh token to enter into the configuration file for \
                     connecting to Playstation Network"))
         .get_matches();
 
+    log4rs::init_file(matches.value_of("log-config").unwrap(), Default::default()).unwrap();
+
     let result = if let Some(_) = matches.subcommand_matches("get-psn-token") {
         get_psn_token()
     } else {
-        let config = matches.value_of("config").unwrap_or("config.hjson");
+        let config = matches.value_of("config").unwrap();
         try_main(&config)
     };
 
